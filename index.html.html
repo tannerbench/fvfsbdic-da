@@ -1,0 +1,1256 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<title>素因数分解道場</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Noto+Sans+JP:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+:root {
+  --tatami:   #c8b07a;
+  --tatami2:  #e2cfa0;
+  --tatami3:  #f5e8c8;
+  --wood:     #8b5e3c;
+  --wood2:    #a07048;
+  --wood3:    #5a3010;
+  --sakura:   #f2b8c6;
+  --sakura2:  #fce8f0;
+  --ink:      #2a1a08;
+  --ink2:     #3d2810;
+  --red:      #c0392b;
+  --red2:     #e74c3c;
+  --gold:     #b8860b;
+  --gold2:    #d4a017;
+  --gold3:    #f0c040;
+  --green:    #3a6a2a;
+  --green2:   #5aaa3a;
+  --muted:    #8a6a40;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--tatami2);
+  font-family: 'Noto Serif JP', serif;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+/* 畳の目 */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background-image:
+    repeating-linear-gradient(0deg,  transparent, transparent 22px, rgba(100,70,30,0.12) 22px, rgba(100,70,30,0.12) 23px),
+    repeating-linear-gradient(90deg, transparent, transparent 22px, rgba(100,70,30,0.12) 22px, rgba(100,70,30,0.12) 23px);
+  pointer-events:none; z-index:0;
+}
+
+/* 浮き桜 */
+#petal-layer {
+  position:fixed; inset:0; pointer-events:none; z-index:1; overflow:hidden;
+}
+.petal {
+  position:absolute;
+  background: var(--sakura);
+  border-radius: 80% 0 80% 0;
+  opacity:0;
+  animation: floatPetal linear infinite;
+}
+@keyframes floatPetal {
+  0%   { transform:translateY(-30px) rotate(0deg);   opacity:0; }
+  8%   { opacity:0.6; }
+  92%  { opacity:0.35; }
+  100% { transform:translateY(110vh) rotate(400deg); opacity:0; }
+}
+
+#app {
+  width:100%;
+  max-width:500px;
+  padding: env(safe-area-inset-top, 8px) 12px env(safe-area-inset-bottom, 8px);
+  padding-top: max(env(safe-area-inset-top), 8px);
+  padding-bottom: max(env(safe-area-inset-bottom), 8px);
+  position:relative; z-index:2;
+}
+
+/* ===== 共通カード ===== */
+.washi-card {
+  background: linear-gradient(160deg, #fdf6e3 0%, #f5e8c0 60%, #ead4a0 100%);
+  border:3px solid var(--wood);
+  border-radius:6px;
+  box-shadow: 0 6px 32px rgba(80,40,10,0.35), inset 0 1px 0 rgba(255,255,255,0.6);
+  position:relative;
+  overflow:hidden;
+}
+/* 内側の細枠 */
+.washi-card::after {
+  content:'';
+  position:absolute; top:6px;left:6px;right:6px;bottom:6px;
+  border:1px solid rgba(139,94,60,0.3);
+  border-radius:3px;
+  pointer-events:none;
+}
+
+/* 上部欄間 */
+.ranma {
+  background: linear-gradient(180deg, var(--wood) 0%, var(--wood2) 100%);
+  padding:8px 16px 6px;
+  border-bottom:2px solid var(--wood3);
+  text-align:center;
+}
+.ranma-sakura { display:flex; justify-content:center; gap:10px; }
+.ranma-petal {
+  display:inline-block; width:12px; height:12px;
+  background: var(--sakura2);
+  border-radius:80% 0 80% 0;
+  transform:rotate(45deg);
+  box-shadow:0 1px 3px rgba(160,60,80,0.3);
+}
+
+/* 下部木枠 */
+.bottom-wood {
+  height:10px;
+  background:linear-gradient(180deg, var(--wood2) 0%, var(--wood) 100%);
+  border-top:2px solid var(--wood3);
+}
+
+/* ===== START SCREEN ===== */
+#start-screen { display:none; }
+#start-screen.active { display:block; }
+
+.title-body { padding:20px 20px 16px; text-align:center; }
+
+.kamon-wrap {
+  width:76px; height:76px; margin:0 auto 12px;
+  border:3px solid var(--wood);
+  border-radius:50%;
+  background:radial-gradient(circle, #fffdf0 40%, #f5e8c0 100%);
+  display:flex; align-items:center; justify-content:center;
+  box-shadow:0 2px 12px rgba(100,60,20,0.3), inset 0 1px 4px rgba(255,255,255,0.7);
+  position:relative;
+}
+.kamon-wrap::before {
+  content:''; position:absolute; inset:5px;
+  border-radius:50%; border:1px solid rgba(139,94,60,0.4);
+}
+.kamon-inner { font-size:34px; line-height:1; }
+
+.dojo-en { font-size:9px; letter-spacing:5px; color:var(--wood); text-transform:uppercase; margin-bottom:6px; font-family:'Noto Sans JP',sans-serif; }
+.dojo-title { font-size:clamp(26px, 7vw, 36px); font-weight:900; color:var(--ink); letter-spacing:5px; margin-bottom:4px; text-shadow:1px 2px 0 rgba(255,255,255,0.7); }
+.dojo-subtitle { font-size:11px; color:var(--wood); letter-spacing:3px; font-family:'Noto Sans JP',sans-serif; }
+
+.sakura-band {
+  margin:14px 0 0;
+  padding:8px 0;
+  text-align:center;
+  font-size:16px; letter-spacing:8px;
+  background:rgba(242,184,198,0.25);
+  border-top:1px solid rgba(139,94,60,0.2);
+  border-bottom:1px solid rgba(139,94,60,0.2);
+}
+
+.rule-wrap { padding:12px 16px 0; }
+.rule-box {
+  background:rgba(255,252,240,0.8);
+  border:1.5px solid rgba(139,94,60,0.35);
+  border-radius:4px;
+  padding:12px 14px;
+  font-size:12px; color:var(--ink2);
+  font-family:'Noto Sans JP',sans-serif;
+  line-height:2;
+  box-shadow:inset 0 1px 4px rgba(160,113,79,0.1);
+}
+.rule-box em { color:var(--red); font-weight:700; font-style:normal; }
+
+.start-wrap { padding:14px 16px 12px; }
+.start-btn {
+  width:100%; padding:clamp(14px, 4vw, 20px);
+  background:linear-gradient(180deg, var(--red2) 0%, var(--red) 100%);
+  color:#fff8f0;
+  border:2px solid var(--wood3);
+  border-radius:4px;
+  font-size:clamp(16px, 4vw, 20px); font-weight:900;
+  font-family:'Noto Serif JP',serif;
+  cursor:pointer; letter-spacing:6px;
+  transition:all 0.2s;
+  box-shadow:0 4px 16px rgba(192,57,43,0.4), inset 0 1px 0 rgba(255,200,180,0.3);
+  min-height:58px; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+}
+.start-btn:hover { transform:translateY(-2px); box-shadow:0 8px 24px rgba(192,57,43,0.5); }
+.start-btn:active { transform:translateY(0); }
+
+.best-row {
+  text-align:center; margin-top:8px; padding-bottom:4px;
+  font-size:12px; color:var(--wood);
+  font-family:'Noto Sans JP',sans-serif;
+}
+.best-row .val { color:var(--red); font-weight:700; font-size:13px; }
+
+/* ===== GAME SCREEN ===== */
+#game-screen { display:none; }
+#game-screen.active { display:block; }
+
+.game-ranma-title {
+  font-size:13px; font-weight:700;
+  color:rgba(255,248,240,0.9);
+  letter-spacing:4px;
+  font-family:'Noto Serif JP',serif;
+}
+
+/* HUD（和紙の上に） */
+.hud {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:10px 16px;
+  background:rgba(253,246,227,0.92);
+  border-bottom:2px solid var(--wood3);
+}
+.hud-item { text-align:center; }
+.hud-label {
+  font-size:9px; color:var(--muted); letter-spacing:2px;
+  font-family:'Noto Sans JP',sans-serif; margin-bottom:2px;
+}
+.hud-value { font-size:clamp(22px, 5vw, 32px); font-weight:900; color:var(--ink); }
+.hud-value.timer.danger { color:var(--red2); animation:blink 0.5s infinite alternate; }
+.hud-value.timer.bonus  { color:var(--green); animation:bonusPop 0.4s ease; }
+.hud-value.score { color:var(--gold); }
+@keyframes blink    { from{opacity:1}to{opacity:0.35} }
+@keyframes bonusPop { 0%{transform:scale(1)}50%{transform:scale(1.35)}100%{transform:scale(1)} }
+
+/* タイマーバー */
+.timer-bar-wrap {
+  height:5px;
+  background:rgba(139,94,60,0.2);
+  border-bottom:1px solid rgba(139,94,60,0.25);
+}
+.timer-bar {
+  height:100%;
+  background:linear-gradient(90deg, var(--gold2), var(--red));
+  transition:width 1s linear;
+}
+
+/* 通知行 */
+.notify-row {
+  display:flex; justify-content:space-between; align-items:center;
+  padding:4px 14px; min-height:26px;
+}
+.combo-badge {
+  display:inline-block;
+  background:linear-gradient(135deg, var(--red), #8b1a10);
+  color:var(--gold3); font-size:10px; font-weight:700;
+  padding:2px 12px; border:1px solid var(--gold2); border-radius:2px;
+  letter-spacing:2px; font-family:'Noto Sans JP',sans-serif;
+  opacity:0; transform:scale(0.8); transition:all 0.2s;
+}
+.combo-badge.show { opacity:1; transform:scale(1); }
+.time-bonus {
+  font-size:11px; font-weight:700; color:var(--green);
+  font-family:'Noto Sans JP',sans-serif; letter-spacing:1px;
+  opacity:0; transform:translateY(4px); transition:all 0.2s;
+}
+.time-bonus.show { opacity:1; transform:translateY(0); }
+
+/* 問題カード */
+.question-area {
+  padding:clamp(10px, 3vw, 20px) 20px clamp(10px, 3vw, 18px);
+  text-align:center;
+  border-bottom:1px solid rgba(139,94,60,0.2);
+  position:relative;
+}
+.question-label {
+  font-size:9px; color:var(--muted); letter-spacing:4px; margin-bottom:6px;
+  font-family:'Noto Sans JP',sans-serif;
+}
+.question-number {
+  font-size:clamp(52px, 14vw, 88px); font-weight:900; color:var(--ink); line-height:1;
+  text-shadow:1px 2px 0 rgba(255,255,255,0.5);
+}
+
+/* 答え表示 */
+.answer-area {
+  min-height:clamp(48px, 10vw, 64px);
+  background:rgba(255,252,240,0.7);
+  border-bottom:1px solid rgba(139,94,60,0.2);
+  padding:8px 14px;
+  display:flex; align-items:center; justify-content:center;
+  flex-wrap:wrap; gap:4px;
+}
+.ans-ph {
+  color:var(--muted); font-size:12px;
+  font-family:'Noto Sans JP',sans-serif;
+}
+.factor-chip {
+  display:inline-flex; align-items:baseline;
+  background:rgba(180,134,11,0.1);
+  border:1.5px solid var(--gold2);
+  border-radius:3px; padding:4px 10px;
+  font-size:clamp(17px, 4vw, 22px); font-weight:700; color:var(--gold);
+  font-family:'Noto Serif JP',serif;
+  animation:chipIn 0.15s ease;
+}
+@keyframes chipIn { from{transform:scale(0.6);opacity:0} to{transform:scale(1);opacity:1} }
+.factor-chip sup { font-size:11px; color:var(--ink2); margin-left:1px; }
+.mul-sign { color:var(--muted); font-size:16px; font-weight:400; }
+
+/* 素数ボタン */
+.prime-pad {
+  padding:12px 12px 8px;
+  border-bottom:1px solid rgba(139,94,60,0.2);
+}
+.prime-grid {
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+  margin-bottom:8px;
+}
+.prime-btn {
+  padding:clamp(14px, 4vw, 22px) 6px;
+  font-size:clamp(20px, 5vw, 28px); font-weight:700;
+  font-family:'Noto Serif JP',serif;
+  background:rgba(253,246,227,0.9);
+  border:2px solid var(--wood2);
+  border-radius:4px;
+  color:var(--ink);
+  cursor:pointer;
+  transition:all 0.12s;
+  box-shadow:0 2px 6px rgba(80,40,10,0.15), inset 0 1px 0 rgba(255,255,255,0.6);
+  position:relative;
+  min-height: 60px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.prime-btn::after {
+  content: attr(data-label);
+  position:absolute; bottom:3px; right:5px;
+  font-size:8px; color:var(--muted);
+  font-family:'Noto Sans JP',sans-serif;
+  letter-spacing:0;
+}
+.prime-btn:hover {
+  border-color:var(--gold2);
+  background:rgba(255,248,200,0.95);
+  color:var(--gold);
+  transform:translateY(-1px);
+  box-shadow:0 4px 10px rgba(80,40,10,0.2);
+}
+.prime-btn:active { transform:scale(0.9) translateY(0); background:rgba(240,192,64,0.2); }
+
+/* アクションボタン */
+.action-row {
+  display:grid; grid-template-columns:1fr 1fr;
+  gap:8px; padding:8px 12px 14px;
+}
+.clear-btn {
+  padding:clamp(12px, 3vw, 18px);
+  background:rgba(192,57,43,0.08);
+  border:1.5px solid rgba(192,57,43,0.5);
+  border-radius:4px;
+  color:var(--red); font-size:clamp(13px, 3.5vw, 17px); font-weight:700;
+  cursor:pointer; font-family:'Noto Sans JP',sans-serif;
+  letter-spacing:1px; transition:all 0.15s;
+  min-height:54px; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+}
+.clear-btn:hover { background:rgba(192,57,43,0.18); }
+.submit-btn {
+  padding:clamp(12px, 3vw, 18px);
+  background:linear-gradient(180deg,#4a9a2a,var(--green));
+  border:2px solid #1a4a0a;
+  border-radius:4px;
+  color:#f0ffe8; font-size:clamp(14px, 3.5vw, 18px); font-weight:900;
+  cursor:pointer; font-family:'Noto Serif JP',serif;
+  letter-spacing:4px;
+  box-shadow:0 3px 12px rgba(58,106,42,0.35);
+  transition:all 0.15s;
+  min-height:54px; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+}
+.submit-btn:hover { background:linear-gradient(180deg,var(--green2),#4a8a2a); transform:translateY(-1px); }
+.submit-btn:active { transform:scale(0.97); }
+
+/* フィードバック */
+#feedback {
+  position:fixed; top:50%; left:50%;
+  transform:translate(-50%,-50%) scale(0.5);
+  font-size:28px; font-weight:900;
+  pointer-events:none; opacity:0; z-index:100;
+  transition:all 0.15s;
+  font-family:'Noto Serif JP',serif; letter-spacing:3px;
+  padding:12px 28px; border-radius:4px; border:2px solid;
+}
+#feedback.correct { color:var(--gold); border-color:var(--gold2); background:rgba(253,246,227,0.97); }
+#feedback.wrong   { color:var(--red2); border-color:var(--red);   background:rgba(253,246,227,0.97); }
+#feedback.show    { transform:translate(-50%,-50%) scale(1); opacity:1; }
+#feedback.hide    { transform:translate(-50%,-58%) scale(1.1); opacity:0; transition:all 0.35s; }
+
+/* ===== RESULT SCREEN ===== */
+#result-screen { display:none; }
+#result-screen.active { display:block; }
+
+.result-body { padding:24px 20px 16px; text-align:center; }
+.result-kamon { font-size:34px; margin-bottom:8px; }
+.result-title { font-size:11px; letter-spacing:6px; color:var(--muted); margin-bottom:14px; font-family:'Noto Sans JP',sans-serif; }
+.result-score { font-size:clamp(64px, 18vw, 96px); font-weight:900; color:var(--gold); line-height:1; margin-bottom:4px; text-shadow:1px 2px 0 rgba(255,255,255,0.5); }
+.result-score-label { font-size:10px; color:var(--muted); letter-spacing:4px; margin-bottom:20px; font-family:'Noto Sans JP',sans-serif; }
+.divider { display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+.divider::before,.divider::after { content:''; flex:1; height:1px; background:rgba(139,94,60,0.4); }
+.divider span { font-size:13px; color:var(--gold2); }
+.result-stats { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:20px; }
+.stat-box { background:rgba(255,252,240,0.7); border:1px solid rgba(139,94,60,0.3); border-radius:4px; padding:12px 8px; }
+.stat-value { font-size:26px; font-weight:900; color:var(--ink); margin-bottom:3px; }
+.stat-label { font-size:9px; color:var(--muted); letter-spacing:2px; font-family:'Noto Sans JP',sans-serif; }
+.result-btns { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.retry-btn {
+  padding:clamp(13px,3.5vw,18px);
+  background:linear-gradient(180deg,var(--red2),var(--red));
+  border:2px solid var(--wood3); border-radius:4px;
+  color:#fff8f0; font-size:clamp(13px,3.5vw,17px); font-weight:900;
+  cursor:pointer; font-family:'Noto Serif JP',serif; letter-spacing:3px;
+  transition:all 0.2s;
+  box-shadow:0 3px 12px rgba(192,57,43,0.35);
+  min-height:54px; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+}
+.retry-btn:hover { transform:translateY(-2px); }
+.menu-btn {
+  padding:clamp(13px,3.5vw,18px);
+  background:rgba(253,246,227,0.7);
+  border:1.5px solid rgba(139,94,60,0.4); border-radius:4px;
+  color:var(--ink2); font-size:clamp(12px,3.5vw,16px); font-weight:700;
+  cursor:pointer; font-family:'Noto Sans JP',sans-serif; letter-spacing:2px;
+  transition:all 0.2s;
+  min-height:54px; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent;
+  user-select:none; -webkit-user-select:none;
+}
+.menu-btn:hover { background:rgba(255,248,200,0.9); border-color:var(--wood); }
+
+@keyframes shake { 0%,100%{transform:translateX(0)}25%{transform:translateX(-8px)}75%{transform:translateX(8px)} }
+.shake { animation:shake 0.25s ease; }
+
+/* ===== ランキング ===== */
+.sub-row { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:8px; }
+.rank-open-btn {
+  padding:12px; min-height:46px;
+  background:rgba(253,246,227,0.8);
+  border:1.5px solid var(--wood2); border-radius:4px;
+  color:var(--ink2); font-size:14px; font-weight:700;
+  font-family:'Noto Sans JP',sans-serif; letter-spacing:1px;
+  cursor:pointer; touch-action:manipulation;
+  -webkit-tap-highlight-color:transparent; user-select:none; -webkit-user-select:none;
+}
+.rank-open-btn:hover { background:rgba(255,248,200,0.95); border-color:var(--gold2); }
+.rank-msg {
+  margin:0 0 14px; min-height:1.4em;
+  font-size:15px; font-weight:700; color:var(--red);
+  font-family:'Noto Serif JP',serif; letter-spacing:1px;
+}
+.rank-near { font-size:12px; color:var(--muted); font-family:'Noto Sans JP',sans-serif; margin:-8px 0 14px; min-height:1.2em; }
+.hud-rank { font-size:10px; color:var(--red); font-weight:700; font-family:'Noto Sans JP',sans-serif; min-height:1.2em; margin-top:1px; }
+
+.overlay {
+  position:fixed; inset:0; z-index:50;
+  background:rgba(60,35,10,0.45);
+  display:flex; align-items:center; justify-content:center;
+  padding:16px; overflow-y:auto;
+}
+.overlay[hidden] { display:none; }
+.overlay .washi-card { width:100%; max-width:420px; margin:auto; }
+.ov-body { padding:16px 18px 18px; }
+.rk-head { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.rk-head h2 { font-size:22px; font-weight:900; color:var(--ink); letter-spacing:3px; display:flex; align-items:center; gap:10px; }
+.live { width:9px; height:9px; border-radius:50%; background:var(--red2); animation:livePulse 1.4s ease-in-out infinite; }
+@keyframes livePulse { 50% { opacity:.25; } }
+.close-btn {
+  width:36px; height:36px; display:grid; place-items:center; padding:0;
+  border:1.5px solid var(--wood2); border-radius:4px; background:rgba(253,246,227,0.9);
+  color:var(--ink2); font-size:18px; cursor:pointer; position:relative; z-index:1;
+}
+.rk-mode { font-size:11px; color:var(--muted); margin:6px 0 8px; font-family:'Noto Sans JP',sans-serif; }
+.rk-list { list-style:none; max-height:52vh; overflow-y:auto; border-top:2px solid var(--wood); position:relative; z-index:1; }
+.rk-list li {
+  display:grid; grid-template-columns:36px 1fr auto; align-items:baseline; gap:8px;
+  padding:8px 4px; border-bottom:1px dashed rgba(139,94,60,0.35);
+  font-family:'Noto Sans JP',sans-serif; color:var(--ink);
+}
+.rk-list .pos { text-align:center; font-weight:900; color:var(--muted); font-family:'Noto Serif JP',serif; }
+.rk-list li.top .pos { font-size:18px; }
+.rk-list .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:700; }
+.rk-list .sc { font-weight:900; color:var(--gold); font-family:'Noto Serif JP',serif; font-variant-numeric:tabular-nums; }
+.rk-list li.me { background:rgba(242,184,198,0.35); }
+.rk-list li.gap { display:block; text-align:center; color:var(--muted); padding:0; border-bottom:0; line-height:1.2; }
+.rk-list .empty { display:block; text-align:center; color:var(--muted); padding:18px 0; font-size:13px; line-height:1.8; border-bottom:0; }
+.you { font-size:9px; border:1px solid var(--red); color:var(--red); border-radius:2px; padding:0 4px; margin-left:6px; vertical-align:2px; }
+.me-line { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; font-size:12px; color:var(--muted); font-family:'Noto Sans JP',sans-serif; position:relative; z-index:1; }
+.me-line b { color:var(--ink); }
+.link-btn { background:none; border:0; color:var(--red); font-weight:700; font-size:12px; text-decoration:underline; cursor:pointer; font-family:'Noto Sans JP',sans-serif; padding:4px; }
+.rk-upd { font-size:10px; color:var(--muted); text-align:right; margin-top:4px; font-family:'Noto Sans JP',sans-serif; }
+
+.name-lead { font-size:12px; line-height:1.9; color:var(--ink2); font-family:'Noto Sans JP',sans-serif; margin:10px 0 12px; text-align:center; }
+.name-label { font-size:11px; color:var(--muted); font-family:'Noto Sans JP',sans-serif; letter-spacing:1px; }
+.name-in {
+  width:100%; margin:4px 0 14px; padding:12px; font-size:16px;
+  font-family:'Noto Sans JP',sans-serif; color:var(--ink);
+  background:rgba(255,252,240,0.95); border:2px solid var(--wood2); border-radius:4px; outline:none;
+  position:relative; z-index:1;
+}
+.name-in:focus { border-color:var(--gold2); box-shadow:0 0 0 3px rgba(212,160,23,0.25); }
+.name-btns { display:grid; gap:8px; position:relative; z-index:1; }
+
+/* 広い画面ではゲームの横にランキングを常設 */
+.side { display:none; }
+@media (min-width: 1080px) {
+  .side {
+    display:block; position:fixed; top:16px; width:260px; z-index:2;
+    left:calc(50% - 280px - 28px - 260px); max-height:calc(100vh - 32px);
+  }
+  .side .ov-body { padding:14px 14px 12px; }
+  .side .rk-head h2 { font-size:18px; }
+  .side .rk-list { max-height:calc(100vh - 220px); }
+  .side .rk-list li { padding:5px 2px; font-size:13px; }
+  .rank-open-btn.hide-wide { display:none; }
+  .sub-row.wide-1 { grid-template-columns:1fr; }
+}
+
+/* ===== iPad / 大画面対応 ===== */
+@media (min-width: 600px) {
+  #app { max-width: 560px; padding: 20px 24px; }
+  .prime-btn { min-height: 72px; font-size: 26px; }
+  .clear-btn, .submit-btn { min-height: 64px; font-size: 17px; }
+  .start-btn { min-height: 68px; font-size: 20px; }
+  .kamon-wrap { width: 90px; height: 90px; }
+  .kamon-inner { font-size: 42px; }
+  .hud { padding: 14px 24px; }
+  .prime-pad { padding: 14px 14px 10px; }
+  .prime-grid { gap: 10px; }
+  .action-row { gap: 10px; padding: 10px 14px 18px; }
+  .notify-row { padding: 6px 18px; }
+  .rule-box { font-size: 14px; line-height: 2.1; }
+}
+
+/* ===== iPhone SE / 小画面対応 ===== */
+@media (max-width: 380px) {
+  .prime-btn { padding: 12px 4px; font-size: 18px; min-height: 52px; }
+  .question-number { font-size: 48px; }
+  .hud-value { font-size: 20px; }
+  .prime-grid { gap: 5px; }
+  .action-row { gap: 6px; padding: 6px 10px 10px; }
+  .prime-pad { padding: 8px 10px 6px; }
+  .dojo-title { font-size: 24px; letter-spacing: 3px; }
+}
+</style>
+</head>
+<body>
+
+<div id="petal-layer"></div>
+
+<div id="app">
+
+  <!-- ===== START ===== -->
+  <div id="start-screen" class="screen active washi-card">
+    <div class="ranma">
+      <div class="ranma-sakura">
+        <span class="ranma-petal"></span><span class="ranma-petal"></span>
+        <span class="ranma-petal"></span><span class="ranma-petal"></span>
+        <span class="ranma-petal"></span>
+      </div>
+    </div>
+
+    <div class="title-body">
+      <div class="kamon-wrap"><span class="kamon-inner">🌸</span></div>
+      <div class="dojo-en">Factorization Dojo</div>
+      <div class="dojo-title">素因数分解道場</div>
+      <div class="dojo-subtitle">〜 算術修行の場 〜</div>
+    </div>
+
+    <div class="sakura-band">🌸 &nbsp;🎋&nbsp; 🌸 &nbsp;🎋&nbsp; 🌸</div>
+
+    <div class="rule-wrap">
+      <div class="rule-box">
+        ・制限時間 <em>60秒</em> からスタート<br>
+        ・正解すると <em>タイムが延長</em>（問題が大きいほど多く延びる）<br>
+        ・素数ボタンを押すと自動で <em>×</em> が入る<br>
+        ・例：12 → <em>2</em> を押して <em>2</em> を押して <em>3</em> を押す
+      </div>
+    </div>
+
+    <div class="start-wrap">
+      <button class="start-btn" id="start-btn">入　門</button>
+      <div class="sub-row wide-1">
+        <button class="rank-open-btn hide-wide" id="start-rank-btn">🏆 番付</button>
+        <button class="rank-open-btn" id="start-name-btn">名前を変更</button>
+      </div>
+      <div class="best-row">最高得点：<span class="val" id="best-val-start">—</span></div>
+    </div>
+
+    <div class="bottom-wood"></div>
+  </div>
+
+  <!-- ===== GAME ===== -->
+  <div id="game-screen" class="screen washi-card">
+    <div class="ranma">
+      <div style="display:flex;align-items:center;justify-content:space-between;">
+        <div class="ranma-sakura" style="gap:6px">
+          <span class="ranma-petal"></span><span class="ranma-petal"></span><span class="ranma-petal"></span>
+        </div>
+        <span class="game-ranma-title">素因数分解道場</span>
+        <div class="ranma-sakura" style="gap:6px">
+          <span class="ranma-petal"></span><span class="ranma-petal"></span><span class="ranma-petal"></span>
+        </div>
+      </div>
+    </div>
+
+    <div class="hud">
+      <div class="hud-item">
+        <div class="hud-label">残り時間</div>
+        <div class="hud-value timer" id="timer-display">60</div>
+      </div>
+      <div class="hud-item">
+        <div class="hud-label">得点</div>
+        <div class="hud-value score" id="score-display">0</div>
+        <div class="hud-rank" id="hud-rank"></div>
+      </div>
+      <div class="hud-item">
+        <div class="hud-label">正解数</div>
+        <div class="hud-value" id="correct-display">0</div>
+      </div>
+    </div>
+
+    <div class="timer-bar-wrap">
+      <div class="timer-bar" id="timer-bar" style="width:100%"></div>
+    </div>
+
+    <div class="notify-row">
+      <span class="combo-badge" id="combo-badge">🔥 連続正解</span>
+      <span class="time-bonus"  id="time-bonus">+5秒</span>
+    </div>
+
+    <div class="question-area" id="question-card">
+      <div class="question-label">— 素因数分解せよ —</div>
+      <div class="question-number" id="question-number">—</div>
+    </div>
+
+    <div class="answer-area" id="answer-area">
+      <span class="ans-ph">素数ボタンを押してね</span>
+    </div>
+
+    <!-- 素数パッド -->
+    <div class="prime-pad">
+      <div class="prime-grid">
+        <button class="prime-btn" data-prime="2"  data-label="素数">2</button>
+        <button class="prime-btn" data-prime="3"  data-label="素数">3</button>
+        <button class="prime-btn" data-prime="5"  data-label="素数">5</button>
+        <button class="prime-btn" data-prime="7"  data-label="素数">7</button>
+        <button class="prime-btn" data-prime="11" data-label="素数">11</button>
+        <button class="prime-btn" data-prime="13" data-label="素数">13</button>
+        <button class="prime-btn" data-prime="17" data-label="素数">17</button>
+        <button class="prime-btn" data-prime="19" data-label="素数">19</button>
+        <button class="prime-btn" data-prime="23" data-label="素数">23</button>
+      </div>
+    </div>
+
+    <div class="action-row">
+      <button class="clear-btn" id="clear-btn">← やり直し</button>
+      <button class="submit-btn" id="submit-btn">決　定</button>
+    </div>
+
+    <div class="bottom-wood"></div>
+  </div>
+
+  <!-- ===== RESULT ===== -->
+  <div id="result-screen" class="screen washi-card">
+    <div class="ranma">
+      <div class="ranma-sakura">
+        <span class="ranma-petal"></span><span class="ranma-petal"></span>
+        <span class="ranma-petal"></span><span class="ranma-petal"></span>
+        <span class="ranma-petal"></span>
+      </div>
+    </div>
+
+    <div class="result-body">
+      <div class="result-kamon">🏯</div>
+      <div class="result-title">— 修行の成果 —</div>
+      <div class="result-score" id="result-score">0</div>
+      <div class="result-score-label">SCORE</div>
+      <div class="rank-msg" id="rank-msg"></div>
+      <div class="rank-near" id="rank-near"></div>
+      <div class="divider"><span>⚔</span></div>
+      <div class="result-stats">
+        <div class="stat-box"><div class="stat-value" id="stat-correct">0</div><div class="stat-label">正解数</div></div>
+        <div class="stat-box"><div class="stat-value" id="stat-wrong">0</div><div class="stat-label">ミス数</div></div>
+        <div class="stat-box"><div class="stat-value" id="stat-maxcombo">0</div><div class="stat-label">最大連続</div></div>
+      </div>
+      <div class="result-btns">
+        <button class="menu-btn" id="menu-btn">道場へ戻る</button>
+        <button class="retry-btn" id="retry-btn">再挑戦</button>
+      </div>
+      <button class="rank-open-btn hide-wide" id="result-rank-btn" style="width:100%;margin-top:8px">🏆 番付を見る</button>
+      <div class="best-row" style="margin-top:12px">最高得点：<span class="val" id="best-val-result">—</span></div>
+    </div>
+
+    <div class="bottom-wood"></div>
+  </div>
+
+</div><!-- #app -->
+
+<!-- ===== 番付（ランキング） ===== -->
+<div class="overlay" id="rank-ov" hidden>
+  <div class="washi-card">
+    <div class="ranma"><div class="ranma-sakura"><span class="ranma-petal"></span><span class="ranma-petal"></span><span class="ranma-petal"></span></div></div>
+    <div class="ov-body">
+      <div class="rk-head">
+        <h2><span class="live" aria-hidden="true"></span>番付</h2>
+        <button class="close-btn" id="rank-close" aria-label="閉じる">✕</button>
+      </div>
+      <div class="rk-mode" id="rk-mode"></div>
+      <ol class="rk-list" id="rk-list"></ol>
+      <div class="me-line"><span>門下生：<b id="me-name">—</b></span><button class="link-btn" id="name-edit">名前を変更</button></div>
+      <div class="rk-upd" id="rk-upd"></div>
+    </div>
+    <div class="bottom-wood"></div>
+  </div>
+</div>
+
+<!-- ===== 名前登録 ===== -->
+<div class="overlay" id="name-ov" hidden>
+  <div class="washi-card">
+    <div class="ranma"><div class="ranma-sakura"><span class="ranma-petal"></span><span class="ranma-petal"></span><span class="ranma-petal"></span></div></div>
+    <div class="ov-body">
+      <div class="dojo-title" style="font-size:24px;text-align:center">入門受付</div>
+      <p class="name-lead">名前を登録してください。<br>番付（ランキング）にこの名前で記録されます。</p>
+      <label class="name-label" for="name-in">名前（10文字まで）</label>
+      <input id="name-in" class="name-in" type="text" maxlength="10" autocomplete="off" placeholder="名前">
+      <div class="name-btns">
+        <button class="start-btn" id="name-ok" style="min-height:52px">登　録</button>
+        <button class="menu-btn" id="name-cancel" hidden>キャンセル</button>
+      </div>
+    </div>
+    <div class="bottom-wood"></div>
+  </div>
+</div>
+
+<!-- ===== 広い画面用：常設の番付 ===== -->
+<aside class="washi-card side" aria-label="番付">
+  <div class="ranma"><div class="ranma-sakura"><span class="ranma-petal"></span><span class="ranma-petal"></span><span class="ranma-petal"></span></div></div>
+  <div class="ov-body">
+    <div class="rk-head"><h2><span class="live" aria-hidden="true"></span>番付</h2><span class="rk-mode" style="margin:0">TOP 20</span></div>
+    <div class="rk-mode" id="side-mode"></div>
+    <ol class="rk-list" id="side-list"></ol>
+    <div class="me-line"><span>門下生：<b id="side-name">—</b></span><button class="link-btn" id="side-edit">名前を変更</button></div>
+    <div class="rk-upd" id="side-upd"></div>
+  </div>
+  <div class="bottom-wood"></div>
+</aside>
+
+<div id="feedback" class="feedback correct">正解！</div>
+
+<script>
+/* ============================================================
+   リアルタイムランキング（Firebase Realtime Database）
+   演算クライマー・NUMBER 1024 と同じ Firebase プロジェクトを使い、
+   別のノード「factor_leaderboard」にスコア（得点）を保存します。
+   Firebase に繋がらない環境では、この端末内だけのローカルランキングになります。
+
+   ★ Realtime Database の「ルール」に factor_leaderboard を追加してください：
+   {
+     "rules": {
+       "leaderboard":         { ...（既存のルールはそのまま）... },
+       "climber_leaderboard": { ...（既存のルールはそのまま）... },
+       "factor_leaderboard": {
+         ".read": true,
+         "$playerId": {
+           ".write": true,
+           ".validate": "newData.hasChildren(['name','score','date']) && newData.child('score').isNumber() && newData.child('name').isString() && newData.child('name').val().length <= 10"
+         }
+       }
+     }
+   }
+   ============================================================ */
+var FIREBASE_CONFIG = {
+  apiKey: "AIzaSyAqjYy2AAsMbwAQ6TtNCWjj1KzcN1sUUFo",
+  authDomain: "number-1024.firebaseapp.com",
+  databaseURL: "https://number-1024-default-rtdb.firebaseio.com",
+  projectId: "number-1024"
+};
+
+(function(){
+  var PRIMES      = [2,3,5,7,11,13,17,19,23];
+  var TOTAL_TIME  = 60;
+
+  var store={
+    get:function(k){try{return localStorage.getItem(k);}catch(e){return null;}},
+    set:function(k,v){try{localStorage.setItem(k,v);}catch(e){}}
+  };
+
+  var currentQuestion=0, currentFactors={};
+  var score=0, correctCount=0, wrongCount=0, combo=0, maxCombo=0;
+  var timeLeft=TOTAL_TIME, timerInterval=null, feedbackTimer=null, bonusTimer=null;
+  var playing=false;
+
+  /* ランキングのシーズン番号。1 つ増やすとランキングと各端末の最高得点がリセットされる */
+  var LB_SEASON=1;
+  if(store.get('fd_season')!==String(LB_SEASON)){store.set('fd_best','0');store.set('fd_season',String(LB_SEASON));}
+  var bestScore=Math.floor(+(store.get('fd_best')||0))||0;
+  document.getElementById('best-val-start').textContent=bestScore>0?bestScore:'—';
+
+  /* selected[] : 押した素数の配列（順番保持）
+     例: 2,2,3 → [2,2,3] → 表示は 2×2×3
+  */
+  var selected = [];
+
+  /* ===== 桜の花びら ===== */
+  (function(){
+    var layer=document.getElementById('petal-layer');
+    for(var i=0;i<18;i++){
+      var p=document.createElement('div');
+      p.className='petal';
+      var s=8+Math.random()*10;
+      p.style.cssText=[
+        'width:'+s+'px','height:'+s+'px',
+        'left:'+(Math.random()*100)+'%',
+        'top:'+(Math.random()*100-10)+'%',
+        'animation-duration:'+(6+Math.random()*9)+'s',
+        'animation-delay:'+(Math.random()*7)+'s',
+        'opacity:0',
+        'transform:rotate('+(Math.random()*360)+'deg)',
+      ].join(';');
+      layer.appendChild(p);
+    }
+  })();
+
+  /* ===== 素因数分解 ===== */
+  function factorize(n){
+    var f={};
+    PRIMES.forEach(function(p){
+      while(n%p===0){f[p]=(f[p]||0)+1;n=n/p;}
+    });
+    return n>1?null:f;
+  }
+
+  function generateQuestion(){
+    var d=Math.min(correctCount,20);
+    var min,max;
+    if     (d< 3){min=4;  max=20; }
+    else if(d< 6){min=10; max=50; }
+    else if(d<10){min=20; max=120;}
+    else if(d<15){min=50; max=300;}
+    else         {min=100;max=1000;}
+    var n,f,a=0;
+    do{ n=Math.floor(Math.random()*(max-min+1))+min; f=factorize(n); a++; }
+    while((!f||Object.keys(f).length<1)&&a<300);
+    if(a>=300){n=12;f={2:2,3:1};}
+    return{n:n,factors:f};
+  }
+
+  function calcTimeBonus(n){
+    if(n<20)  return 2;
+    if(n<50)  return 3;
+    if(n<120) return 5;
+    if(n<300) return 7;
+    return 10;
+  }
+
+  /* ===== 答えエリア描画 ===== */
+  function renderAnswer(){
+    var area=document.getElementById('answer-area');
+    area.innerHTML='';
+
+    if(selected.length===0){
+      var ph=document.createElement('span');
+      ph.className='ans-ph';
+      ph.textContent='素数ボタンを押してね';
+      area.appendChild(ph);
+      return;
+    }
+
+    /* 連続した同じ数をまとめて指数表示 */
+    var groups=[];
+    selected.forEach(function(p){
+      if(groups.length>0&&groups[groups.length-1].p===p){
+        groups[groups.length-1].c++;
+      }else{
+        groups.push({p:p,c:1});
+      }
+    });
+
+    groups.forEach(function(g,i){
+      if(i>0){
+        var x=document.createElement('span');
+        x.className='mul-sign';
+        x.textContent=' × ';
+        area.appendChild(x);
+      }
+      var chip=document.createElement('span');
+      chip.className='factor-chip';
+      if(g.c>1){
+        chip.innerHTML=g.p+'<sup>'+g.c+'</sup>';
+      }else{
+        chip.textContent=g.p;
+      }
+      area.appendChild(chip);
+    });
+  }
+
+  /* ===== 素数ボタン ===== */
+  document.querySelectorAll('.prime-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){
+      var p=parseInt(this.dataset.prime,10);
+      selected.push(p);        /* ← 押したら即追加、自動で×は描画時に挟む */
+      renderAnswer();
+    });
+  });
+
+  /* ===== クリア ===== */
+  document.getElementById('clear-btn').addEventListener('click',function(){
+    selected=[]; renderAnswer();
+  });
+
+  /* ===== 決定 ===== */
+  document.getElementById('submit-btn').addEventListener('click',checkAnswer);
+
+  function checkAnswer(){
+    if(selected.length===0){shakeCard();return;}
+
+    var product=selected.reduce(function(a,b){return a*b;},1);
+    var allPrime=selected.every(function(n){return PRIMES.indexOf(n)>=0;});
+
+    if(allPrime && product===currentQuestion){
+      combo++; if(combo>maxCombo)maxCombo=combo;
+      score+=10*(combo>=3?combo:1);
+      correctCount++;
+      var add=calcTimeBonus(currentQuestion);
+      timeLeft=Math.min(timeLeft+add,999);
+      showTimeBonusNotify(add); flashTimer();
+      updateCombo(); showFeedback(true); updateHUD();
+      checkRivals(); queueLive();
+      selected=[]; renderAnswer();
+      setQuestion();
+    }else{
+      wrongCount++; combo=0;
+      updateCombo(); showFeedback(false); shakeCard();
+    }
+  }
+
+  /* ===== 問題セット ===== */
+  function setQuestion(){
+    var q=generateQuestion();
+    currentQuestion=q.n; currentFactors=q.factors;
+    document.getElementById('question-number').textContent=q.n;
+  }
+
+  /* ===== HUD ===== */
+  function updateHUD(){
+    document.getElementById('score-display').textContent=score;
+    document.getElementById('correct-display').textContent=correctCount;
+    updateHudRank();
+  }
+
+  /* ===== タイマー ===== */
+  function startTimer(){
+    timeLeft=TOTAL_TIME;
+    var td=document.getElementById('timer-display');
+    var tb=document.getElementById('timer-bar');
+    td.textContent=timeLeft; td.classList.remove('danger','bonus'); tb.style.width='100%';
+    timerInterval=setInterval(function(){
+      timeLeft--;
+      td.textContent=timeLeft;
+      tb.style.width=Math.min(timeLeft/TOTAL_TIME*100,100)+'%';
+      if(timeLeft<=10&&!td.classList.contains('bonus')) td.classList.add('danger');
+      if(timeLeft<=0) endGame();
+    },1000);
+  }
+
+  function flashTimer(){
+    var td=document.getElementById('timer-display');
+    td.classList.remove('danger','bonus'); void td.offsetWidth;
+    td.classList.add('bonus'); td.textContent=timeLeft;
+    setTimeout(function(){td.classList.remove('bonus');if(timeLeft<=10)td.classList.add('danger');},500);
+  }
+
+  /* ===== タイムボーナス通知 ===== */
+  function showTimeBonusNotify(sec){
+    var el=document.getElementById('time-bonus'); if(!el)return;
+    if(bonusTimer)clearTimeout(bonusTimer);
+    el.classList.remove('show'); void el.offsetWidth;
+    el.textContent='+'+sec+'秒'; el.classList.add('show');
+    bonusTimer=setTimeout(function(){el.classList.remove('show');},900);
+  }
+
+  /* ===== コンボ ===== */
+  function updateCombo(){
+    var b=document.getElementById('combo-badge'); if(!b)return;
+    if(combo>=2){b.textContent='🔥 連続'+combo+'問';b.classList.add('show');}
+    else b.classList.remove('show');
+  }
+
+  /* ===== フィードバック ===== */
+  function showFeedback(ok){
+    var el=document.getElementById('feedback'); if(!el)return;
+    if(feedbackTimer){clearTimeout(feedbackTimer);feedbackTimer=null;}
+    el.classList.remove('show','hide');
+    el.className='feedback '+(ok?'correct':'wrong');
+    el.textContent=ok?(combo>=3?'連続'+combo+'問！':'正解！'):'不正解…';
+    void el.offsetWidth; el.classList.add('show');
+    feedbackTimer=setTimeout(function(){el.classList.remove('show');el.classList.add('hide');},700);
+  }
+
+  function shakeCard(){
+    var c=document.getElementById('question-card');
+    c.classList.remove('shake'); void c.offsetWidth; c.classList.add('shake');
+  }
+
+  /* ===== ゲーム開始 ===== */
+  function startGame(){
+    if(timerInterval){clearInterval(timerInterval);timerInterval=null;}
+    score=0;correctCount=0;wrongCount=0;combo=0;maxCombo=0;
+    selected=[]; playing=true;
+    bestAtStart=bestScore; pbPassed=false; rivalPassed={};
+    updateHUD(); renderAnswer();
+    document.getElementById('combo-badge').classList.remove('show');
+    document.getElementById('time-bonus').classList.remove('show');
+    showScreen('game-screen');
+    setQuestion(); startTimer();
+  }
+
+  /* ===== ゲーム終了 ===== */
+  function endGame(){
+    clearInterval(timerInterval); timerInterval=null;
+    playing=false;
+    document.getElementById('rank-near').innerHTML=nearText(score);
+    if(score>bestScore){bestScore=score;store.set('fd_best',String(bestScore));}
+    document.getElementById('result-score').textContent=score;
+    document.getElementById('stat-correct').textContent=correctCount;
+    document.getElementById('stat-wrong').textContent=wrongCount;
+    document.getElementById('stat-maxcombo').textContent=maxCombo;
+    document.getElementById('best-val-result').textContent=bestScore>0?bestScore:'—';
+    if(liveT){clearTimeout(liveT);liveT=null;}
+    rankMsg.textContent=rkMode==='off'?'':(playerName?'番付に反映中…':'');
+    submit().then(function(pos){
+      if(rkMode==='off'||!playerName){rankMsg.textContent='';return;}
+      if(pos===null){rankMsg.textContent='⚠ 番付に反映できませんでした';return;}
+      if(pos<0){rankMsg.textContent='0 点の記録は番付に載りません';return;}
+      rankMsg.textContent=(['🥇 ','🥈 ','🥉 '][pos]||'')+'番付 '+(pos+1)+' 位（全'+board.length+'人中）';
+    });
+    setTimeout(function(){showScreen('result-screen');},300);
+  }
+
+  /* ============================================================
+     ランキング
+     ============================================================ */
+  var LB_PATH='factor_leaderboard', LOCAL_LB='fd_leaderboard_v1', LB_SHOW=20, LB_KEEP=100;
+  var playerName=store.get('fd_name')||'';
+  var playerId=store.get('fd_id');
+  if(!playerId){
+    playerId=(window.crypto&&crypto.randomUUID)?crypto.randomUUID():Date.now()+'-'+Math.random().toString(36).slice(2,10);
+    store.set('fd_id',playerId);
+  }
+  var rkMode='off', fbRef=null, board=[], chan=null, liveT=null, lastSync=null;
+  var bestAtStart=0, pbPassed=false, rivalPassed={};
+  var $=function(id){return document.getElementById(id);};
+  var rankOv=$('rank-ov'), nameOv=$('name-ov'), rankMsg=$('rank-msg'), hudRank=$('hud-rank');
+
+  function inSeason(e){return e&&typeof e.score==='number'&&e.season===LB_SEASON;}
+  function esc(s){return String(s).replace(/[&<>"']/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];});}
+  function sorted(){return board.slice().sort(function(a,b){return b.score-a.score||a.date-b.date;});}
+  function myBest(){return Math.max(score||0,bestScore||0);}
+
+  function loadScript(src){return new Promise(function(res,rej){var s=document.createElement('script');s.src=src;s.onload=res;s.onerror=function(){rej(new Error('load failed: '+src));};document.head.appendChild(s);});}
+  function hasLS(){try{localStorage.setItem('__fd','1');localStorage.removeItem('__fd');return true;}catch(e){return false;}}
+
+  function initRanking(){
+    if(FIREBASE_CONFIG.apiKey&&FIREBASE_CONFIG.databaseURL){
+      return loadScript('https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js')
+        .then(function(){return loadScript('https://www.gstatic.com/firebasejs/10.7.1/firebase-database-compat.js');})
+        .then(function(){
+          if(!firebase.apps.length)firebase.initializeApp(FIREBASE_CONFIG);
+          fbRef=firebase.database().ref(LB_PATH); rkMode='firebase';
+          fbRef.on('value',function(snap){
+            var v=snap.val()||{};
+            board=Object.keys(v).map(function(k){var e=v[k]||{};e.id=k;return e;}).filter(inSeason);
+            lastSync=new Date(); renderRanking();
+          },function(err){
+            console.warn('[ranking] firebase read failed:',err&&err.message);
+            $('rk-mode').textContent=$('side-mode').textContent='⚠ 番付を読み込めません（Firebase のルールを確認してください）';
+          });
+          renderRanking(); if(playerName)submit();
+        })
+        .catch(function(e){console.warn('[ranking] Firebase init failed, falling back:',e&&e.message||e);initLocal();});
+    }
+    initLocal();
+  }
+  function initLocal(){
+    rkMode=hasLS()?'local':'off';
+    if(rkMode==='local'){
+      try{chan=new BroadcastChannel('fd_ranking');chan.onmessage=refresh;}catch(e){}
+      window.addEventListener('storage',function(e){if(e.key===LOCAL_LB)refresh();});
+      setInterval(refresh,4000);
+    }
+    refresh(); if(playerName)submit();
+  }
+  function loadList(){try{return JSON.parse(localStorage.getItem(LOCAL_LB)||'[]').filter(inSeason);}catch(e){return [];}}
+  function saveList(list){
+    try{localStorage.setItem(LOCAL_LB,JSON.stringify(list));if(chan)chan.postMessage('u');return true;}
+    catch(e){console.error('[ranking] save failed:',e);return false;}
+  }
+  function refresh(){if(rkMode==='local'){board=loadList();lastSync=new Date();}renderRanking();}
+
+  /* 自分の最高得点を書き込み、順位（0 始まり）を返す。失敗時 null */
+  function submit(){
+    if(!playerName||rkMode==='off')return Promise.resolve(null);
+    var cur=myBest();
+    if(rkMode==='firebase'){
+      return fbRef.child(playerId).transaction(function(prev){
+        var ok=inSeason(prev), s=Math.max(cur,ok?prev.score:0);
+        if(!ok&&s<=0)return;                                  // 0 点なら登録しない
+        if(ok&&prev.score===s&&prev.name===playerName)return; // 変化なし
+        return{name:playerName,score:s,date:Date.now(),season:LB_SEASON};
+      }).then(function(r){
+        var v=r.snapshot&&r.snapshot.val();
+        if(v){v.id=playerId;var i=board.findIndex(function(e){return e.id===playerId;});if(i>=0)board[i]=v;else board.push(v);renderRanking();}
+        return sorted().findIndex(function(e){return e.id===playerId;});
+      }).catch(function(e){console.error('[ranking] firebase write failed:',e&&e.message||e);return null;});
+    }
+    var list=loadList(), i=list.findIndex(function(e){return e.id===playerId;}), prev=i>=0?list[i]:null;
+    var s=Math.max(cur,prev?prev.score:0);
+    if(prev||s>0){
+      var e={id:playerId,name:playerName,score:s,date:prev&&prev.score===s?prev.date:Date.now(),season:LB_SEASON};
+      if(i>=0)list[i]=e;else list.push(e);
+      list.sort(function(a,b){return b.score-a.score;});
+      if(!saveList(list.slice(0,LB_KEEP)))return Promise.resolve(null);
+      board=list.slice(0,LB_KEEP); lastSync=new Date(); renderRanking();
+    }
+    return Promise.resolve(sorted().findIndex(function(e){return e.id===playerId;}));
+  }
+  /* プレイ中も 1.5 秒ごとにまとめて送信（他の人の画面にリアルタイムで反映） */
+  function queueLive(){if(!playerName||rkMode==='off'||liveT)return;liveT=setTimeout(function(){liveT=null;submit();},1500);}
+
+  /* 今の得点 s より上にいる、いちばん近いライバル */
+  function nextRival(s){
+    var best=null;
+    board.forEach(function(e){if(e.id===playerId||!(e.score>=s))return;if(e.score===s&&s===0)return;if(!best||e.score<best.score)best=e;});
+    return best;
+  }
+  function rankAt(s){return 1+board.filter(function(e){return e.id!==playerId&&e.score>=s;}).length;}
+  function rivalRank(r){return 1+board.filter(function(e){return e.id!==playerId&&e.score>r.score;}).length;}
+
+  /* 正解したとき：自己ベストやライバルを抜いたら知らせる */
+  function checkRivals(){
+    if(!pbPassed&&bestAtStart>0&&score>bestAtStart){pbPassed=true;flashNotice('🎉 自己ベスト突破！');}
+    board.forEach(function(e){
+      if(e.id===playerId||rivalPassed[e.id]||!(e.score>0))return;
+      if(score>e.score){rivalPassed[e.id]=true;flashNotice(e.name+' を抜いた！ → '+rankAt(score)+' 位');}
+    });
+  }
+  function flashNotice(text){
+    var el=$('time-bonus'); if(!el)return;
+    setTimeout(function(){
+      if(bonusTimer)clearTimeout(bonusTimer);
+      el.classList.remove('show'); void el.offsetWidth;
+      el.textContent=text; el.classList.add('show');
+      bonusTimer=setTimeout(function(){el.classList.remove('show');},1600);
+    },700);
+  }
+
+  /* プレイ中の暫定順位 */
+  function updateHudRank(){
+    if(!hudRank)return;
+    if(rkMode==='off'||!playerName||!playing){hudRank.textContent='';return;}
+    var r=nextRival(score);
+    hudRank.textContent=rankAt(Math.max(score,1))+' 位'+(r?' ／ あと'+(r.score-score+1)+'点':'');
+  }
+
+  /* 結果画面の「あと少し」 */
+  function nearText(s){
+    var t='';
+    if(bestAtStart<=0)t=s>0?'はじめての記録！':'';
+    else if(s>bestAtStart)t='🎉 自己ベスト更新！（+'+(s-bestAtStart)+' 点）';
+    else if(s===bestAtStart)t='自己ベストに並んだ！';
+    else t='あと '+(bestAtStart-s)+' 点で自己ベスト';
+    var r=rkMode==='off'?null:nextRival(Math.max(s,bestAtStart));
+    if(r)t+='<br>あと '+(r.score-Math.max(s,bestAtStart)+1)+' 点で '+esc(r.name)+'（'+rivalRank(r)+' 位）を抜ける';
+    return t;
+  }
+
+  function renderRanking(){
+    $('me-name').textContent=$('side-name').textContent=playerName||'—';
+    var mode=rkMode==='firebase'?'🌐 全門下生とリアルタイム共有中'
+      :rkMode==='local'?'💻 この端末内のみ（Firebase に接続できませんでした）'
+      :'⚠ この環境では番付を利用できません';
+    $('rk-mode').textContent=$('side-mode').textContent=mode;
+    if(rkMode==='off'){
+      $('rk-list').innerHTML=$('side-list').innerHTML='<li class="empty">ブラウザのストレージがブロックされています</li>';
+      $('rk-upd').textContent=$('side-upd').textContent='';updateHudRank();return;
+    }
+    var all=sorted(), list=all.slice(0,LB_SHOW), myPos=all.findIndex(function(e){return e.id===playerId;});
+    function row(e,i){var me=e.id===playerId;
+      return '<li class="'+(i<3?'top':'')+(me?' me':'')+'"><span class="pos">'+(['🥇','🥈','🥉'][i]||(i+1))+'</span><span class="nm">'+esc(e.name)+(me?'<span class="you">YOU</span>':'')+'</span><span class="sc">'+e.score+' 点</span></li>';}
+    var html=list.length?list.map(row).join(''):'<li class="empty">まだ記録がありません<br>最初の番付入りを目指そう！</li>';
+    if(myPos>=LB_SHOW)html+='<li class="gap" aria-hidden="true">⋮</li>'+row(all[myPos],myPos);
+    $('rk-list').innerHTML=$('side-list').innerHTML=html;
+    $('rk-upd').textContent=$('side-upd').textContent=lastSync?'更新 '+lastSync.toLocaleTimeString('ja-JP'):'';
+    updateHudRank();
+  }
+
+  function openRank(){renderRanking();rankOv.hidden=false;$('rank-close').focus();}
+  function closeRank(){rankOv.hidden=true;}
+  function openName(cancelable){
+    $('name-in').value=playerName; $('name-cancel').hidden=!cancelable; nameOv.hidden=false;
+    setTimeout(function(){$('name-in').focus();},50);
+  }
+  function confirmName(){
+    var n=($('name-in').value.trim()||'門下生').slice(0,10);
+    playerName=n; store.set('fd_name',n); nameOv.hidden=true; $('name-in').blur();
+    renderRanking(); submit();
+  }
+  $('start-rank-btn').addEventListener('click',openRank);
+  $('result-rank-btn').addEventListener('click',openRank);
+  $('start-name-btn').addEventListener('click',function(){openName(true);});
+  $('rank-close').addEventListener('click',closeRank);
+  rankOv.addEventListener('click',function(e){if(e.target===rankOv)closeRank();});
+  $('name-edit').addEventListener('click',function(){closeRank();openName(true);});
+  $('side-edit').addEventListener('click',function(){openName(true);});
+  $('name-ok').addEventListener('click',confirmName);
+  $('name-cancel').addEventListener('click',function(){nameOv.hidden=true;});
+  $('name-in').addEventListener('keydown',function(e){if(e.key==='Enter'&&!e.isComposing){e.preventDefault();confirmName();}});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&!rankOv.hidden)closeRank();});
+
+  /* ===== 画面切替 ===== */
+  function showScreen(id){
+    document.querySelectorAll('.screen').forEach(function(s){s.classList.remove('active');});
+    document.getElementById(id).classList.add('active');
+  }
+
+  /* ===== ボタン ===== */
+  document.getElementById('start-btn').addEventListener('click',startGame);
+  document.getElementById('retry-btn').addEventListener('click',startGame);
+  document.getElementById('menu-btn').addEventListener('click',function(){
+    var el=document.getElementById('best-val-start');
+    if(el)el.textContent=bestScore>0?bestScore:'—';
+    showScreen('start-screen');
+  });
+
+  /* ===== ランキング起動 ===== */
+  renderRanking();
+  if(!playerName)openName(false);
+  initRanking();
+
+})();
+</script>
+</body>
+</html>
